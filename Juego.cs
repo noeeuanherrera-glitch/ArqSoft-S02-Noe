@@ -6,41 +6,24 @@ namespace Ahorcado
 {
     public class Juego
     {
-        // Variables de estado del juego (Clase Dios)
-        private List<string> _palabras = new()
-        {
-            "arquitectura", "interfaz", "polimorfismo", "encapsulamiento", "herencia"
-        };
-        private string _palabraSecreta;
-        private List<char> _letrasUsadas;
-        private int _intentosRestantes;
+        private readonly IRepositorioPalabras _repositorio;
+        private MotorAhorcado _motor;
 
         public Juego()
         {
-            var random = new Random();
-            _palabraSecreta = _palabras[random.Next(_palabras.Count)];
-            _letrasUsadas = new List<char>();
-            _intentosRestantes = 6;
+            // Usamos la interfaz y la implementación que creaste antes
+            _repositorio = new PalabrasEnMemoria();
+            string palabra = _repositorio.ObtenerPalabraAleatoria();
+
+            // Inicializamos el motor con la palabra obtenida
+            _motor = new MotorAhorcado(palabra);
         }
 
         public void Jugar()
         {
-            Console.Clear();
-            Console.WriteLine("=== AHORCADO ===");
-
-            while (_intentosRestantes > 0)
+            while (!_motor.JugadorGano() && !_motor.JugadorPerdio())
             {
                 MostrarTablero();
-
-                if (VerificarVictoria())
-                {
-                    Console.WriteLine($"\n¡Ganaste! La palabra era: {_palabraSecreta}");
-                    if (PreguntarOtraVez())
-                    {
-                        new Juego().Jugar();
-                    }
-                    return;
-                }
 
                 Console.Write("\nIngresa una letra: ");
                 string entrada = Console.ReadLine();
@@ -49,49 +32,43 @@ namespace Ahorcado
 
                 char letra = entrada.ToLower()[0];
 
-                if (_letrasUsadas.Contains(letra))
+                if (!_motor.ProcesarLetra(letra))
                 {
-                    Console.WriteLine("Ya usaste esa letra. Presiona cualquier tecla para continuar...");
+                    Console.WriteLine("Ya usaste esa letra o es inválida. Presiona cualquier tecla...");
                     Console.ReadKey();
-                    continue;
-                }
-
-                _letrasUsadas.Add(letra);
-
-                if (!_palabraSecreta.Contains(letra))
-                {
-                    _intentosRestantes--;
                 }
             }
 
             MostrarTablero();
-            Console.WriteLine($"\nPerdiste. La palabra era: {_palabraSecreta}");
+
+            if (_motor.JugadorGano())
+                Console.WriteLine($"\n¡Ganaste! La palabra era: {_motor.PalabraSecreta}");
+            else
+                Console.WriteLine($"\nPerdiste. La palabra era: {_motor.PalabraSecreta}");
+
             if (PreguntarOtraVez())
             {
+                // Reiniciamos un nuevo juego
                 new Juego().Jugar();
             }
-        }
-
-        private bool VerificarVictoria()
-        {
-            foreach (char c in _palabraSecreta)
-            {
-                if (!_letrasUsadas.Contains(c)) return false;
-            }
-            return true;
         }
 
         private void MostrarTablero()
         {
             Console.Clear();
+            Console.WriteLine("=== AHORCADO (Refactorizado: Motor Extraído) ===");
+
+            // El dibujo sigue aquí (se irá en el siguiente paso: ConsolaUI)
             MostrarAhorcado();
-            Console.WriteLine($"Intentos restantes: {_intentosRestantes}");
-            Console.WriteLine($"Letras usadas: {string.Join(", ", _letrasUsadas)}");
+
+            // Ahora le pedimos los datos al motor
+            Console.WriteLine($"Intentos restantes: {_motor.IntentosRestantes}");
+            Console.WriteLine($"Letras usadas: {string.Join(", ", _motor.LetrasUsadas)}");
             Console.Write("Palabra: ");
 
-            foreach (char c in _palabraSecreta)
+            foreach (char c in _motor.PalabraSecreta)
             {
-                Console.Write(_letrasUsadas.Contains(c) ? $"{c} " : "_ ");
+                Console.Write(_motor.LetrasUsadas.Contains(c) ? $"{c} " : "_ ");
             }
             Console.WriteLine();
         }
@@ -106,17 +83,16 @@ namespace Ahorcado
         {
             string[] etapas = new string[]
             {
-                "  -----\n  |   |\n      |\n      |\n      |\n      |\n=========", // 0 fallos
-                "  -----\n  |   |\n  O   |\n      |\n      |\n      |\n=========", // 1 fallo
-                "  -----\n  |   |\n  O   |\n  |   |\n      |\n      |\n=========", // 2 fallos
-                "  -----\n  |   |\n  O   |\n /|   |\n      |\n      |\n=========", // 3 fallos
-                "  -----\n  |   |\n  O   |\n /|\\  |\n      |\n      |\n=========", // 4 fallos
-                "  -----\n  |   |\n  O   |\n /|\\  |\n /    |\n      |\n=========", // 5 fallos
-                "  -----\n  |   |\n  O   |\n /|\\  |\n / \\  |\n      |\n========="  // 6 fallos
+                "  -----\n  |   |\n      |\n      |\n      |\n      |\n=========",
+                "  -----\n  |   |\n  O   |\n      |\n      |\n      |\n=========",
+                "  -----\n  |   |\n  O   |\n  |   |\n      |\n      |\n=========",
+                "  -----\n  |   |\n  O   |\n /|   |\n      |\n      |\n=========",
+                "  -----\n  |   |\n  O   |\n /|\\  |\n      |\n      |\n=========",
+                "  -----\n  |   |\n  O   |\n /|\\  |\n /    |\n      |\n=========",
+                "  -----\n  |   |\n  O   |\n /|\\  |\n / \\  |\n      |\n========="
             };
 
-            // Muestra la etapa según los fallos (6 - intentos)
-            Console.WriteLine(etapas[6 - _intentosRestantes]);
+            Console.WriteLine(etapas[6 - _motor.IntentosRestantes]);
         }
     }
 }
